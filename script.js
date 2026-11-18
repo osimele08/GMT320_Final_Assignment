@@ -5,7 +5,7 @@ let countriesList = [];
 
 let trendChartInstance = null;
 let rankBarChartInstance = null;
-let scatterChartInstance = null;
+let doughnutChartInstance = null;
 
 // color palette for the 10 brics countries
 const countryColors = [
@@ -285,7 +285,7 @@ function renderLineChart(selectedCountry, selectedIndicator) {
     return {
       label: row.country,
       data: yearsList.map(function (yr) { return row.values[yr]; }),
-      borderColor: isHighlighted ? baseColor : "rgba(100, 116, 139, 0.2)",
+      borderColor: isHighlighted ? baseColor : "rgba(148, 163, 184, 0.18)",
       backgroundColor: baseColor,
       borderWidth: row.country === selectedCountry ? 3.5 : 2,
       pointRadius: isHighlighted ? 3 : 0,
@@ -309,17 +309,17 @@ function renderLineChart(selectedCountry, selectedIndicator) {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          labels: { color: "#64748b", boxWidth: 12, font: { size: 11 } }
+          labels: { color: "#cbd5e1", boxWidth: 12, font: { size: 11 } }
         }
       },
       scales: {
         x: {
-          ticks: { color: "#64748b" },
-          grid: { color: "rgba(226, 232, 240, 0.8)" }
+          ticks: { color: "#94a3b8" },
+          grid: { color: "rgba(51, 65, 85, 0.4)" }
         },
         y: {
-          ticks: { color: "#64748b" },
-          grid: { color: "rgba(226, 232, 240, 0.8)" }
+          ticks: { color: "#94a3b8" },
+          grid: { color: "rgba(51, 65, 85, 0.4)" }
         }
       }
     }
@@ -352,9 +352,9 @@ function renderHorizontalBarChart(selectedCountry, selectedYear, selectedIndicat
   const values = ranked.map(function (item) { return item.value; });
   const barColors = ranked.map(function (item) {
     if (selectedCountry === "ALL" || item.country === selectedCountry) {
-      return "#0f172a";
+      return "#38bdf8";
     }
-    return "rgba(15, 23, 42, 0.25)";
+    return "rgba(56, 189, 248, 0.25)";
   });
 
   if (rankBarChartInstance) {
@@ -384,11 +384,11 @@ function renderHorizontalBarChart(selectedCountry, selectedYear, selectedIndicat
       },
       scales: {
         x: {
-          ticks: { color: "#64748b" },
-          grid: { color: "rgba(226, 232, 240, 0.8)" }
+          ticks: { color: "#94a3b8" },
+          grid: { color: "rgba(51, 65, 85, 0.4)" }
         },
         y: {
-          ticks: { color: "#0f172a", font: { size: 11, weight: "bold" } },
+          ticks: { color: "#e2e8f0", font: { size: 11 } },
           grid: { display: false }
         }
       }
@@ -396,76 +396,47 @@ function renderHorizontalBarChart(selectedCountry, selectedYear, selectedIndicat
   });
 }
 
-// render chart 3: scatter plot comparing gdp per capita vs electricity access for selected year
-function renderScatterChart(selectedYear) {
-  document.getElementById("chart-radar-heading").textContent =
-    "GDP per Capita vs. Electricity Access (" + selectedYear + ")";
-
-  const gdpRows = allRecords.filter(function (r) { return r.seriesCode === "NY.GDP.PCAP.CD"; });
-  const elecRows = allRecords.filter(function (r) { return r.seriesCode === "EG.ELC.ACCS.ZS"; });
-
-  const scatterData = [];
-
-  gdpRows.forEach(function (gdpRow) {
-    const country = gdpRow.country;
-    const gdpVal = gdpRow.values[selectedYear];
-
-    const elecRow = elecRows.find(function (e) { return e.country === country; });
-    const elecVal = elecRow ? elecRow.values[selectedYear] : null;
-
-    if (gdpVal !== null && elecVal !== null) {
-      scatterData.push({
-        x: gdpVal,
-        y: elecVal,
-        country: country
-      });
-    }
+// render chart 3: doughnut chart showing share distribution across countries for selected year & indicator
+function renderDoughnutChart(selectedYear, selectedIndicator) {
+  const indicatorRows = allRecords.filter(function (row) {
+    return row.seriesCode === selectedIndicator;
   });
 
-  if (scatterChartInstance) {
-    scatterChartInstance.destroy();
+  const indicatorLabel = indicatorRows.length > 0 ? indicatorRows[0].seriesName : "";
+  document.getElementById("chart-radar-heading").textContent =
+    "Bloc Share Distribution: " + indicatorLabel + " (" + selectedYear + ")";
+
+  const labels = indicatorRows.map(function (row) { return row.country; });
+  const dataValues = indicatorRows.map(function (row) {
+    const val = row.values[selectedYear];
+    return val !== null && val > 0 ? val : 0;
+  });
+
+  if (doughnutChartInstance) {
+    doughnutChartInstance.destroy();
   }
 
   const ctx = document.getElementById("radarChart").getContext("2d");
-  scatterChartInstance = new Chart(ctx, {
-    type: "scatter",
+  doughnutChartInstance = new Chart(ctx, {
+    type: "doughnut",
     data: {
-      datasets: [{
-        label: "BRICS Nations",
-        data: scatterData,
-        backgroundColor: "#0f172a",
-        borderColor: "#84cc16",
-        borderWidth: 2,
-        pointRadius: 6,
-        pointHoverRadius: 8
-      }]
+      labels: labels,
+      datasets: [
+        {
+          data: dataValues,
+          backgroundColor: countryColors,
+          borderWidth: 1,
+          borderColor: "#1e293b"
+        }
+      ]
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
-        tooltip: {
-          callbacks: {
-            label: function (context) {
-              const point = context.raw;
-              return point.country + ": GDP $" + point.x.toLocaleString() + ", Electricity " + point.y.toFixed(1) + "%";
-            }
-          }
-        }
-      },
-      scales: {
-        x: {
-          title: { display: true, text: "GDP per Capita (US$)", color: "#64748b", font: { size: 11 } },
-          ticks: { color: "#64748b" },
-          grid: { color: "rgba(226, 232, 240, 0.8)" }
-        },
-        y: {
-          title: { display: true, text: "Access to Electricity (%)", color: "#64748b", font: { size: 11 } },
-          ticks: { color: "#64748b" },
-          grid: { color: "rgba(226, 232, 240, 0.8)" },
-          min: 0,
-          max: 105
+        legend: {
+          position: "right",
+          labels: { color: "#cbd5e1", boxWidth: 12, font: { size: 10 } }
         }
       }
     }
@@ -481,7 +452,7 @@ function refreshDashboard() {
   updateSummaryIndicators(selectedCountry, selectedYear, selectedIndicator);
   renderLineChart(selectedCountry, selectedIndicator);
   renderHorizontalBarChart(selectedCountry, selectedYear, selectedIndicator);
-  renderScatterChart(selectedYear);
+  renderDoughnutChart(selectedYear, selectedIndicator);
 }
 
 // start loading the csv when the page opens
